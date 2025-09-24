@@ -1,0 +1,41 @@
+name: Build EcoSteno V1 (hex)
+
+on:
+  workflow_dispatch: {}          # Lets you run it by hand
+  push:
+    branches: [ main, master ]   # Also runs when you save a change
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout your EcoSteno files
+        uses: actions/checkout@v4
+
+      - name: Fetch a fresh QMK source tree
+        run: |
+          git clone --depth=1 https://github.com/qmk/qmk_firmware qmk
+          mkdir -p qmk/keyboards/noll
+          cp -r keyboards/noll/ecosteno qmk/keyboards/noll/
+
+      - name: Install AVR toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-avr binutils-avr avr-libc dfu-programmer make python3
+
+      - name: Pull QMK submodules
+        run: |
+          cd qmk
+          make git-submodule
+
+      - name: Build EcoSteno default
+        run: |
+          cd qmk
+          make noll/ecosteno:default
+
+      - name: Upload HEX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecosteno-hex
+          path: qmk/.build/*.hex
