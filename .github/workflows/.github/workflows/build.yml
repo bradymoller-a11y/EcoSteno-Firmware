@@ -1,9 +1,9 @@
 name: Build EcoSteno V1 (hex)
 
 on:
-  workflow_dispatch: {}          # Lets you run it by hand
+  workflow_dispatch: {}
   push:
-    branches: [ main, master ]   # Also runs when you save a change
+    branches: [ main, master ]
 
 jobs:
   build:
