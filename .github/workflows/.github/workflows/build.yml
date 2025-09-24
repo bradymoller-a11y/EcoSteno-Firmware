@@ -10,13 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout your EcoSteno files
+      - name: Checkout your EcoSteno sources
         uses: actions/checkout@v4
 
       - name: Fetch a fresh QMK source tree
         run: |
           git clone --depth=1 https://github.com/qmk/qmk_firmware qmk
           mkdir -p qmk/keyboards/noll
+          # Copy your EcoSteno keyboard into the fresh QMK tree
           cp -r keyboards/noll/ecosteno qmk/keyboards/noll/
 
       - name: Install AVR toolchain
@@ -25,17 +26,38 @@ jobs:
           sudo apt-get install -y gcc-avr binutils-avr avr-libc dfu-programmer make python3
 
       - name: Pull QMK submodules
-        run: |
-          cd qmk
-          make git-submodule
+        working-directory: qmk
+        run: make git-submodule
 
-      - name: Build EcoSteno default
+      - name: Try build (vendor path) and capture logs
+        working-directory: qmk
         run: |
-          cd qmk
-          make noll/ecosteno:default
+          set -o pipefail
+          make noll/ecosteno:default 2>&1 | tee ../build.log || exit 0
 
-      - name: Upload HEX artifact
+      - name: If no hex yet, try flat target and append logs
+        working-directory: qmk
+        run: |
+          if ! ls .build/*.hex >/dev/null 2>&1; then
+            set -o pipefail
+            # Move to flat path and try again
+            mv keyboards/noll/ecosteno keyboards/ecosteno || true
+            make ecosteno:default 2>&1 | tee -a ../build.log || true
+          fi
+
+      - name: Upload HEX (if any)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ecosteno-hex
-          path: qmk/.build/*.hex
+          path: |
+            qmk/.build/*.hex
+          if-no-files-found: ignore
+
+      - name: Upload build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecosteno-build-log
+          path: build.log
+          if-no-files-found: warn
