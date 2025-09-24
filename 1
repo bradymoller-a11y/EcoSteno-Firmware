@@ -1,0 +1,30 @@
+name: Build EcoSteno V1 (hex)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install QMK
+        run: |
+          sudo apt update
+          sudo apt install -y git python3-pip
+          pip install qmk
+
+      - name: Setup QMK
+        run: |
+          qmk setup -y
+          qmk config user.qmk_home=$GITHUB_WORKSPACE
+
+      - name: Compile EcoSteno
+        run: qmk compile -kb noll/ecosteno -km default
+
+      - name: Upload HEX
+        uses: actions/upload-artifact@v3
+        with:
+          name: ecosteno-hex
+          path: .build/*.hex
